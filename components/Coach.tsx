@@ -1,55 +1,61 @@
-
-import React, { useState, useCallback } from 'react';
-import { getBlackjackAdvice } from '../services/geminiService';
-import { Hand } from '../types';
+import React from 'react';
+import { Card as CardType, Hand as HandType, Rank } from '../types';
 
 interface CoachProps {
-  playerHand: Hand;
-  dealerCard: Hand['cards'][0] | undefined;
-  isPlayerTurn: boolean;
+  playerHand: HandType;
+  dealerUpCard?: CardType;
 }
 
-const BrainIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-1a6 6 0 00-5.197-5.975M15 11a4 4 0 11-8 0 4 4 0 018 0z" />
-    </svg>
-);
-
-
-export const Coach: React.FC<CoachProps> = ({ playerHand, dealerCard, isPlayerTurn }) => {
-  const [advice, setAdvice] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleGetAdvice = useCallback(async () => {
-    if (!dealerCard) return;
-    setIsLoading(true);
-    setAdvice(null);
-    const result = await getBlackjackAdvice(playerHand, dealerCard);
-    setAdvice(result);
-    setIsLoading(false);
-    setTimeout(() => setAdvice(null), 8000); // Advice disappears after 8 seconds
-  }, [playerHand, dealerCard]);
-
-  if (!isPlayerTurn) {
-    return null;
+const getAdvice = (playerHand: HandType, dealerUpCard?: CardType): string => {
+  if (!dealerUpCard) {
+    return '...';
   }
-  
+
+  const playerScore = playerHand.score;
+  const dealerValue = dealerUpCard.value;
+
+  // Determine if the player's hand is "soft" (contains an Ace counted as 11)
+  const nonAceValue = playerHand.cards
+    .filter(card => card.rank !== Rank.Ace)
+    .reduce((sum, card) => sum + card.value, 0);
+  const aceCount = playerHand.cards.filter(card => card.rank === Rank.Ace).length;
+  const isSoft = aceCount > 0 && (nonAceValue + 11 + (aceCount - 1) <= 21);
+
+  if (isSoft) {
+    // Basic strategy for soft hands
+    if (playerScore >= 19) return 'Stand';
+    if (playerScore === 18) {
+      return (dealerValue >= 2 && dealerValue <= 8) ? 'Stand' : 'Hit';
+    }
+    // Soft 17 or less
+    return 'Hit';
+  } else {
+    // Basic strategy for hard hands
+    if (playerScore >= 17) return 'Stand';
+    if (playerScore >= 13 && playerScore <= 16) {
+      return (dealerValue >= 2 && dealerValue <= 6) ? 'Stand' : 'Hit';
+    }
+    if (playerScore === 12) {
+      return (dealerValue >= 4 && dealerValue <= 6) ? 'Stand' : 'Hit';
+    }
+    // 11 or less
+    return 'Hit';
+  }
+};
+
+export const Coach: React.FC<CoachProps> = ({ playerHand, dealerUpCard }) => {
+  const advice = getAdvice(playerHand, dealerUpCard);
+
+  let adviceColor = 'text-yellow-300';
+  if (advice === 'Stand') adviceColor = 'text-green-400';
+  if (advice === 'Hit') adviceColor = 'text-sky-400';
+
   return (
-    <div className="absolute top-4 right-4 md:top-6 md:right-6 flex flex-col items-end z-20">
-        <button
-          onClick={handleGetAdvice}
-          disabled={isLoading}
-          className="p-3 bg-emerald-700/50 text-emerald-200 rounded-full hover:bg-emerald-600/70 backdrop-blur-sm transition-all duration-200 flex items-center gap-2 shadow-lg border border-emerald-500/30 disabled:opacity-50 disabled:cursor-wait"
-        >
-          <BrainIcon/>
-          <span className="hidden md:inline">{isLoading ? 'Thinking...' : 'AI Coach'}</span>
-        </button>
-        {advice && (
-            <div className="mt-2 p-3 bg-black/70 border border-yellow-400/50 rounded-lg text-yellow-300 max-w-xs text-sm shadow-2xl animate-fade-in-down">
-                <p className="font-bold">Coach says:</p>
-                <p>{advice}</p>
-            </div>
-        )}
+    <div className="absolute bottom-24 md:bottom-28 mb-4 p-4 bg-black/60 rounded-xl border border-yellow-400/50 backdrop-blur-sm shadow-lg animate-fade-in-down z-20">
+      <h3 className="text-sm font-bold uppercase text-yellow-400 tracking-wider text-center">Coach's Advice</h3>
+      <p className={`text-3xl font-black text-center mt-1 ${adviceColor}`}>
+        {advice}
+      </p>
     </div>
   );
 };

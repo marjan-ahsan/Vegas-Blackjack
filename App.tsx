@@ -53,6 +53,7 @@ const App: React.FC = () => {
   const [gamePhase, setGamePhase] = useState<GamePhase>(GamePhase.Betting);
   const [message, setMessage] = useState<string | null>(null);
   const [isDealingAnimation, setIsDealingAnimation] = useState(false);
+  const [showCoach, setShowCoach] = useState(false);
   
   const resetHands = useCallback(() => {
     let currentDeck = deck;
@@ -260,7 +261,21 @@ const App: React.FC = () => {
       <div className="absolute inset-0 bg-center bg-no-repeat opacity-10" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23a0aec0\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")'}}></div>
 
       <HUD wallet={wallet} bet={gamePhase === GamePhase.Betting ? totalPlacedBet : currentBet} />
-      <Coach playerHand={playerHand} dealerCard={dealerHand.cards[1]} isPlayerTurn={gamePhase === GamePhase.PlayerTurn} />
+      
+      <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20">
+        <button 
+          onClick={() => setShowCoach(!showCoach)}
+          aria-pressed={showCoach}
+          aria-label="Toggle strategy coach"
+          className={`px-4 py-2 rounded-lg font-bold border-2 transition-all duration-200
+            ${showCoach 
+              ? 'bg-yellow-400 text-black border-yellow-400 shadow-lg' 
+              : 'bg-black/50 text-emerald-300 border-emerald-500/50 hover:bg-emerald-900/70'
+            }`}
+        >
+          Coach
+        </button>
+      </div>
 
       <main className="z-10 w-full max-w-7xl flex flex-col items-center justify-between flex-grow">
         <Hand hand={dealerHand} title="Dealer" isDealer isPlayerTurn={gamePhase === GamePhase.PlayerTurn} />
@@ -280,7 +295,11 @@ const App: React.FC = () => {
 
         <Hand hand={playerHand} title="Player" />
 
-        <div className="w-full flex flex-col items-center justify-center py-6 md:py-8 min-h-[10rem] -translate-y-12">
+        <div className="w-full relative flex flex-col items-center justify-center py-6 md:py-8 min-h-[10rem] -translate-y-12">
+           {gamePhase === GamePhase.PlayerTurn && showCoach && (
+            <Coach playerHand={playerHand} dealerUpCard={dealerHand.cards[1]} />
+          )}
+
           {gamePhase === GamePhase.Betting && (
             <div className="flex flex-col items-center space-y-4">
               <p className="text-lg md:text-xl font-bold text-yellow-300">Place Your Bet</p>
